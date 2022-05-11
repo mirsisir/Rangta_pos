@@ -1,0 +1,2 @@
+[2022-04-23 19:36:20] local.EMERGENCY: File:/home/gbrekdxn/rangtabd.com/app/Utils/TransactionUtil.phpLine:519Message:Trying to get property 'quantity' of non-object  
+[2022-04-23 19:36:27] local.EMERGENCY: File:/home/gbrekdxn/rangtabd.com/app/Utils/TransactionUtil.phpLine:519Message:Trying to get property 'quantity' of non-object  
