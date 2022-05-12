@@ -23,7 +23,7 @@
 	            				@php
 	            				$name = $product->product;
 			                    if ($product->type == 'variable') {
-			                        $name .= ' - ' . $product->product_variation . '-' . $product->variation_name;
+			                        $name .= ' - ' . $product->product_variation . '' . $product->variation_name;
 			                    }
 			                    @endphp
 			                    {{$name}}

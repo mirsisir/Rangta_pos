@@ -20,6 +20,7 @@ use App\Variation;
 use App\VariationGroupPrice;
 use App\VariationLocationDetails;
 use App\VariationTemplate;
+use App\VariationValueTemplate;
 use App\Warranty;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -445,9 +446,11 @@ class ProductController extends Controller
 
         //product screen view from module
         $pos_module_data = $this->moduleUtil->getModuleData('get_product_screen_top_view');
+        $variation_templates = VariationTemplate::where('business_id', $business_id)->pluck('name', 'id')->toArray();
+
 
         return view('product.create')
-            ->with(compact('categories', 'brands', 'units', 'taxes', 'barcode_types', 'default_profit_percent', 'tax_attributes', 'barcode_default', 'business_locations', 'duplicate_product', 'sub_categories', 'rack_details', 'selling_price_group_count', 'module_form_parts', 'product_types', 'common_settings', 'warranties', 'pos_module_data', 'selected_location'));
+            ->with(compact('categories', 'variation_templates','brands', 'units', 'taxes', 'barcode_types', 'default_profit_percent', 'tax_attributes', 'barcode_default', 'business_locations', 'duplicate_product', 'sub_categories', 'rack_details', 'selling_price_group_count', 'module_form_parts', 'product_types', 'common_settings', 'warranties', 'pos_module_data', 'selected_location'));
     }
 
     private function product_types()
@@ -467,9 +470,6 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-
-
-
         if (!auth()->user()->can('product.create')) {
             abort(403, 'Unauthorized action.');
         }
@@ -482,7 +482,7 @@ class ProductController extends Controller
             if (!empty($module_form_fields)) {
                 $form_fields = array_merge($form_fields, $module_form_fields);
             }
-            
+
             $product_details = $request->only($form_fields);
             $product_details['business_id'] = $business_id;
             $product_details['created_by'] = $request->session()->get('user.id');
@@ -513,7 +513,7 @@ class ProductController extends Controller
             $common_settings = session()->get('business.common_settings');
 
             $product_details['warranty_id'] = !empty($request->input('warranty_id')) ? $request->input('warranty_id') : null;
-            /*$product_details['is_accessories'] = !empty($request->input('is_accessories')) ? $request->input('is_accessories') : 0;*/
+            //$product_details['is_accessories'] = !empty($request->input('is_accessories')) ? $request->input('is_accessories') : 0;
 
             $product_details['is_accessories'] = !empty($request->input('is_accessories')) ? 0 : 1;
 
@@ -536,12 +536,14 @@ class ProductController extends Controller
             if (!empty($product_locations)) {
                 $product->product_locations()->sync($product_locations);
             }
-            
+
             if ($product->type == 'single') {
                 $this->productUtil->createSingleProductVariation($product->id, $product->sku, $request->input('single_dpp'), $request->input('single_dpp_inc_tax'), $request->input('profit_percent'), $request->input('single_dsp'), $request->input('single_dsp_inc_tax'));
             } elseif ($product->type == 'variable') {
                 if (!empty($request->input('product_variation'))) {
                     $input_variations = $request->input('product_variation');
+//                    return $input_variations;
+//                    dd($input_variations);
                     $this->productUtil->createVariableProductVariations($product->id, $input_variations);
                 }
             } elseif ($product->type == 'combo') {
@@ -555,10 +557,10 @@ class ProductController extends Controller
 
                     foreach ($composition_variation_id as $key => $value) {
                         $combo_variations[] = [
-                                'variation_id' => $value,
-                                'quantity' => $this->productUtil->num_uf($quantity[$key]),
-                                'unit_id' => $unit[$key]
-                            ];
+                            'variation_id' => $value,
+                            'quantity' => $this->productUtil->num_uf($quantity[$key]),
+                            'unit_id' => $unit[$key]
+                        ];
                     }
                 }
 
@@ -580,15 +582,16 @@ class ProductController extends Controller
 
             DB::commit();
             $output = ['success' => 1,
-                            'msg' => __('product.product_added_success')
-                        ];
+                'msg' => __('product.product_added_success')
+            ];
         } catch (\Exception $e) {
+//            return $e;
             DB::rollBack();
             \Log::emergency("File:" . $e->getFile(). "Line:" . $e->getLine(). "Message:" . $e->getMessage());
-            
+
             $output = ['success' => 0,
-                            'msg' => __("messages.something_went_wrong")
-                        ];
+                'msg' => __("messages.something_went_wrong")
+            ];
             return redirect('products')->with('status', $output);
         }
 
@@ -2251,5 +2254,82 @@ class ProductController extends Controller
 
         return view('product.stock_history')
                 ->with(compact('product', 'business_locations'));
+    }
+
+
+    public function getproduct_form_variant(Request $request){
+
+
+        $business_id = $request->session()->get('user.business_id');
+        $business = Business::findorfail($business_id);
+        $profit_percent = $business->default_profit_percent;
+
+        $variation_templates = VariationTemplate::where('business_id', $business_id)
+            ->pluck('name', 'id')->toArray();
+        $variation_templates = [ "" => __('messages.please_select')] + $variation_templates;
+
+        $row_index = $request->input('row_index', 0);
+        $action = $request->input('action');
+
+//        $select_attributes = $request->input('selected_variant');
+        $selected_variant_value = $request->selected_variant_value;
+
+        $combinations = $this->getCombinations($selected_variant_value,$business_id);
+        return view('purchase.partials.product_form_variant')
+            ->with(compact('variation_templates', 'row_index', 'action', 'profit_percent','combinations'));
+
+    }
+
+    public function variant_value(Request $request){
+
+
+        $update_variant_id = $request['update_variant'];
+
+        $variation_templates_value = VariationValueTemplate::where('variation_template_id',$update_variant_id)->get();
+        $variation_templates = VariationTemplate::find($update_variant_id);
+
+        return view('purchase.partials.variant_value')
+            ->with(compact('update_variant_id','variation_templates_value','variation_templates'));
+
+    }
+
+
+    public function getCombinations($select_attributes = [1,2]){
+
+//        $selected_verent = [];
+//
+//        foreach ($select_attributes as $attribute){
+//            $selected_verent[]= VariationValueTemplate::where('variation_template_id',$attribute)
+//                ->pluck('name', 'id')->toArray();
+//
+//        }
+        $results = $this->combinations($select_attributes);
+
+        return $results;
+    }
+
+
+    public function combinations($arrays, $i = 0) {
+        if (!isset($arrays[$i])) {
+            return array();
+        }
+        if ($i == count($arrays) - 1) {
+            return $arrays[$i];
+        }
+
+        // get combinations from subsequent arrays
+        $tmp = $this->combinations($arrays, $i + 1);
+
+        $result = array();
+
+        // concat each array from tmp with each element from $arrays[$i]
+        foreach ($arrays[$i] as $v) {
+            foreach ($tmp as $t) {
+//                    $result[] = is_array($t) ? array_merge(array($v), $t) : array($v, $t);
+                $result[] = $v.'-'.$t;
+            }
+        }
+
+        return $result;
     }
 }

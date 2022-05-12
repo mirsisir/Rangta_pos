@@ -33,7 +33,7 @@
 					{{-- Variation --}}
 					@if(!empty($print['variations']) && $page_product->is_dummy != 1)
 						<span style="display: block !important; font-size: {{16*$factor}}px">
-							<b>{{$page_product->product_variation_name}}</b>:{{$page_product->variation_name}}
+							<b>{{$page_product->product_variation_name}}</b>{{$page_product->variation_name}}
 						</span>
 					@endif
 					@if(!empty($print['product_custom_field1']))

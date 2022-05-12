@@ -798,6 +798,12 @@ $(document).ready(function() {
     }
     $('#type').change(function() {
         show_product_type_form();
+        if ($('#type').val() == "variable"){
+            $('#select_attribute').show();
+        }
+        else {
+            $('#select_attribute').hide();
+        }
     });
 
     $(document).on('click', '#add_variation', function() {

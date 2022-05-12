@@ -149,7 +149,6 @@ class SellPosController extends Controller
     public function create()
     {
 
-
         $business_id = request()->session()->get('user.business_id');
 
         if (!(auth()->user()->can('superadmin') || auth()->user()->can('sell.create') || ($this->moduleUtil->hasThePermissionInSubscription($business_id, 'repair_module') && auth()->user()->can('repair.create')))) {
@@ -471,7 +470,7 @@ class SellPosController extends Controller
                             $this->productUtil->decreaseProductQuantity(
                                 $product['product_id'],
                                 $product['variation_id'],
-                                $input['location_id'],
+                                4,
                                 $decrease_qty,0,
                                 $product['imei_id'] ?? null
                             );

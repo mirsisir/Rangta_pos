@@ -27,7 +27,7 @@
 				@foreach($product->variations as $variation)
 				<tr>
 					<td>
-						{{$variation->product_variation->name}} - {{ $variation->name }}
+						{{$variation->product_variation->name}}  {{ $variation->name }}
 					</td>
 					<td>
 						{{ $variation->sub_sku }}
